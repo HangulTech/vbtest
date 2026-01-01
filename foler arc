@@ -1,0 +1,20 @@
+vbtest/
+├─ backend/
+│  ├─ src/
+│  │  ├─ app.module.ts
+│  │  ├─ main.ts
+│  │  ├─ config/
+│  │  ├─ auth/
+│  │  ├─ users/
+│  │  ├─ schools/
+│  │  ├─ students/
+│  │  ├─ transport/
+│  │  ├─ attendance/
+│  │  └─ common/
+│  ├─ prisma/
+│  ├─ Dockerfile
+│  └─ package.json
+├─ frontend/
+├─ docker/
+├─ docs/
+└─ README.md
