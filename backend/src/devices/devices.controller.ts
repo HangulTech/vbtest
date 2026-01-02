@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Req } from 'src/admin/node_modules/@nestjs/common';
 import { DevicesService } from './devices.service';
 import { AttendanceService } from '../attendance/attendance.service';
 import { DeviceGuard } from './devices.guard';

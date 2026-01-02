@@ -1,7 +1,7 @@
-import 'reflect-metadata';
+import 'src/admin/node_modules/reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe } from 'src/admin/node_modules/@nestjs/common';
 
 
 async function bootstrap() {

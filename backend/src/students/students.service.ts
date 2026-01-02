@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { Injectable } from 'src/admin/node_modules/@nestjs/common';
+import { PrismaClient } from 'src/admin/node_modules/@prisma/client';
 import { generateRMF } from './rmf.util';
 
 @Injectable()

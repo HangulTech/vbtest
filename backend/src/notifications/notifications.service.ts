@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { Injectable, Logger } from 'src/admin/node_modules/@nestjs/common';
+import { PrismaClient } from 'src/admin/node_modules/@prisma/client';
 import { NOTIFICATION_TYPE } from './notification.types';
 import { NotificationTemplates } from './notification.templates';
 

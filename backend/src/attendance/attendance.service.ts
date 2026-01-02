@@ -1,108 +1,183 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { Injectable } from 'src/admin/node_modules/@nestjs/common';
 import {
-  ATTENDANCE_STATUS,
-  ATTENDANCE_SOURCE,
-  MORNING_CUTOFF_HOUR
-} from './attendance.rules';
+  PrismaClient,
+  PersonType,
+  AttendanceStatus
+} from 'src/admin/node_modules/@prisma/client';
 import { EVENT_TYPE } from './attendance.events';
+import { MORNING_CUTOFF_HOUR } from './attendance.rules';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NOTIFICATION_TYPE } from '../notifications/notification.types';
 
 @Injectable()
 export class AttendanceService {
   private prisma = new PrismaClient();
 
+  constructor(
+    private readonly notifications: NotificationsService
+  ) {}
+
+  // -------------------------
+  // Utils
+  // -------------------------
   private normalizeDate(date: Date) {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
     return d;
   }
 
-  // Generic logical event (not device-specific)
+  // =========================
+  // RECORD EVENT (CORE)
+  // =========================
   async recordEvent(input: {
-    studentId: string;
+    personId: string;
     eventType: string;
+    source: string;
     timestamp?: Date;
+    location?: string;
   }) {
     const ts = input.timestamp ?? new Date();
     const day = this.normalizeDate(ts);
 
-    // 1. Store movement event
-    await this.prisma.movementEvent.create({
+    // 1️⃣ Store movement event
+    const event = await this.prisma.movementEvent.create({
       data: {
-        studentId: input.studentId,
+        personId: input.personId,
         eventType: input.eventType,
-        source: 'SYSTEM',
+        source: input.source,
+        location: input.location,
         timestamp: ts
       }
     });
 
-    // 2. Attendance derivation
+    // 2️⃣ Attendance derivation
     if (
       input.eventType === EVENT_TYPE.ENTER_SCHOOL ||
       input.eventType === EVENT_TYPE.BOARD_BUS
     ) {
       await this.prisma.attendance.upsert({
-        where: { studentId_date: { studentId: input.studentId, date: day } },
+        where: {
+          personId_date: {
+            personId: input.personId,
+            date: day
+          }
+        },
         update: {
-          status: ATTENDANCE_STATUS.PRESENT,
-          source: ATTENDANCE_SOURCE.EVENT
+          status: AttendanceStatus.PRESENT,
+          source: 'EVENT'
         },
         create: {
-          studentId: input.studentId,
+          personId: input.personId,
           date: day,
-          status: ATTENDANCE_STATUS.PRESENT,
-          source: ATTENDANCE_SOURCE.EVENT
+          status: AttendanceStatus.PRESENT,
+          source: 'EVENT'
         }
       });
+
+      // 🔔 Notifications (students only)
+      const person = await this.prisma.person.findUnique({
+        where: { id: input.personId },
+        include: { student: true }
+      });
+
+      if (person?.type === PersonType.STUDENT && person.student) {
+        await this.notifications.notifyParents(
+          person.student.id,
+          NOTIFICATION_TYPE.STUDENT_ARRIVED,
+          {
+            studentName: person.student.fullName,
+            time: ts.toLocaleTimeString()
+          }
+        );
+      }
     }
+
+    return event;
   }
 
-  // Run by cron / scheduler later
+  // =========================
+  // AUTO ABSENT MARKING
+  // =========================
   async markAbsentIfNoEvents(date: Date) {
     const cutoff = new Date(date);
     cutoff.setHours(MORNING_CUTOFF_HOUR, 0, 0, 0);
+
     if (new Date() < cutoff) return;
 
     const day = this.normalizeDate(date);
 
-    const students = await this.prisma.student.findMany({
+    // 🔥 Loop over PERSONS (students + staff)
+    const persons = await this.prisma.person.findMany({
       where: { isActive: true }
     });
 
-    for (const s of students) {
+    for (const p of persons) {
       const hasEvent = await this.prisma.movementEvent.findFirst({
-        where: { studentId: s.id, timestamp: { gte: day } }
+        where: {
+          personId: p.id,
+          timestamp: { gte: day }
+        }
       });
 
       if (!hasEvent) {
         await this.prisma.attendance.upsert({
-          where: { studentId_date: { studentId: s.id, date: day } },
+          where: {
+            personId_date: {
+              personId: p.id,
+              date: day
+            }
+          },
           update: {
-            status: ATTENDANCE_STATUS.ABSENT,
-            source: ATTENDANCE_SOURCE.EVENT
+            status: AttendanceStatus.ABSENT,
+            source: 'EVENT'
           },
           create: {
-            studentId: s.id,
+            personId: p.id,
             date: day,
-            status: ATTENDANCE_STATUS.ABSENT,
-            source: ATTENDANCE_SOURCE.EVENT
+            status: AttendanceStatus.ABSENT,
+            source: 'EVENT'
           }
         });
       }
     }
   }
 
+  // =========================
+  // MANUAL OVERRIDE
+  // =========================
   async manualOverride(
-    studentId: string,
+    personId: string,
     date: Date,
-    status: 'PRESENT' | 'ABSENT'
+    status: AttendanceStatus
   ) {
     const day = this.normalizeDate(date);
 
     return this.prisma.attendance.upsert({
-      where: { studentId_date: { studentId, date: day } },
-      update: { status, source: ATTENDANCE_SOURCE.MANUAL },
-      create: { studentId, date: day, status, source: ATTENDANCE_SOURCE.MANUAL }
+      where: {
+        personId_date: {
+          personId,
+          date: day
+        }
+      },
+      update: {
+        status,
+        source: 'MANUAL'
+      },
+      create: {
+        personId,
+        date: day,
+        status,
+        source: 'MANUAL'
+      }
+    });
+  }
+
+  // =========================
+  // HELPER (USED BY NOTIFICATIONS / REPORTS)
+  // =========================
+  async resolveStudentForPerson(personId: string) {
+    return this.prisma.student.findUnique({
+      where: { personId }
     });
   }
 }

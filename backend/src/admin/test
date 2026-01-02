@@ -1,0 +1,54 @@
+🧪 CLEAN, CORRECT TEST FLOW (DO THIS EXACTLY)
+1️⃣ Create Tenant
+POST http://localhost:3000/api/admin/tenant
+
+{
+  "name": "EduHan Demo School"
+}
+
+
+➡️ Copy returned tenantId
+
+2️⃣ Create Person (STUDENT)
+POST http://localhost:3000/api/admin/person
+
+{
+  "tenantId": "24ed414a-3c70-4145-b516-32e4915e359b",
+  "type": "STUDENT",
+  "rfidTag": "RFID-STU-010"
+}
+
+
+➡️ Copy returned personId
+
+3️⃣ Create Student (THIS WILL NOW WORK)
+POST http://localhost:3000/api/admin/student
+
+{
+  "tenantId": "24ed414a-3c70-4145-b516-32e4915e359b",
+  "fullName": "Ayaan Khan",
+  "rmfId": "EDU25ABC010",
+  "personId": "e47431e4-9ca3-4044-bd0a-927f810e32d0"
+}
+
+
+✅ This must succeed now.
+
+4️⃣ Attendance event (final proof)
+POST http://localhost:3000/api/attendance/event
+
+{
+  "personId": "e47431e4-9ca3-4044-bd0a-927f810e32d0",
+  "eventType": "ENTER_SCHOOL",
+  "source": "EDU25ABC010",
+  "location": "Main Gate"
+}
+
+
+Expected:
+
+200 OK
+
+MovementEvent created
+
+Attendance auto-created (PRESENT)

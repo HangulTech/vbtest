@@ -1,11 +1,18 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-1.1.x"]
 }
+
+
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+//////////////////////
+// ENUMS
+//////////////////////
 
 enum UserRole {
   SUPER_ADMIN
@@ -17,21 +24,44 @@ enum UserRole {
   OPEN_USER
 }
 
+enum PersonType {
+  STUDENT
+  TEACHER
+  STAFF
+  SECURITY
+  DRIVER
+  HELPER
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+}
+
+//////////////////////
+// CORE TENANT
+//////////////////////
+
 model Tenant {
   id       String  @id @default(uuid())
   name     String
   isActive Boolean @default(true)
 
   users         User[]
-  schoolProfile SchoolProfile?
+  persons       Person[]
   students      Student[]
+  schoolProfile SchoolProfile?
 
   vehicles Vehicle[]
   routes   Route[]
 
   createdAt DateTime @default(now())
-  Person    Person[]
+  Device    Device[]
 }
+
+//////////////////////
+// AUTH / USERS
+//////////////////////
 
 model User {
   id       String   @id @default(uuid())
@@ -39,18 +69,22 @@ model User {
   email    String?  @unique
   password String?
   role     UserRole
-  tenantId String?
-  tenant   Tenant?  @relation(fields: [tenantId], references: [id])
 
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+
+  persons       Person[]
   parentProfile Parent?
   driverProfile DriverProfile?
 
-  isActive Boolean @default(true)
-
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  Person    Person[]
 }
+
+//////////////////////
+// SCHOOL
+//////////////////////
 
 model SchoolProfile {
   id       String @id @default(uuid())
@@ -65,23 +99,58 @@ model SchoolProfile {
   createdAt DateTime @default(now())
 }
 
+//////////////////////
+// PERSON (ATTENDANCE IDENTITY)
+//////////////////////
+
+model Person {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  type    PersonType
+  refId   String? // soft reference (DriverProfile, Helper, etc.)
+  rfidTag String     @unique
+
+  student Student?
+
+  attendance Attendance[]
+  events     MovementEvent[]
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+//////////////////////
+// STUDENTS
+//////////////////////
+
 model Student {
   id         String  @id @default(uuid())
   rmfId      String  @unique
   fullName   String
   rollNumber String?
-  tenantId   String
-  tenant     Tenant  @relation(fields: [tenantId], references: [id])
 
-  person       Person?         @relation(fields: [personId], references: [id])
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  personId String? @unique
+  person   Person? @relation(fields: [personId], references: [id])
+
   parents      ParentStudent[]
   routes       StudentRoute[]
   boardingLogs BoardingLog[]
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
-  personId  String?
 }
+
+//////////////////////
+// PARENTS
+//////////////////////
 
 model Parent {
   id     String @id @default(uuid())
@@ -102,6 +171,10 @@ model ParentStudent {
 
   @@unique([parentId, studentId])
 }
+
+//////////////////////
+// TRANSPORT
+//////////////////////
 
 model DriverProfile {
   id     String @id @default(uuid())
@@ -203,7 +276,7 @@ model Trip {
   startedAt DateTime?
   endedAt   DateTime?
 
-  currentStopIndex Int? // 👈 ADD THIS
+  currentStopIndex Int?
 
   boardingLogs BoardingLog[]
 
@@ -226,11 +299,15 @@ model BoardingLog {
   @@index([studentId])
 }
 
+//////////////////////
+// ATTENDANCE & EVENTS
+//////////////////////
+
 model Attendance {
-  id       String   @id @default(uuid())
+  id       String           @id @default(uuid())
   personId String
   date     DateTime
-  status   String // PRESENT / ABSENT
+  status   AttendanceStatus
   source   String // EVENT / MANUAL
 
   person Person @relation(fields: [personId], references: [id])
@@ -253,23 +330,21 @@ model MovementEvent {
   @@index([personId, timestamp])
 }
 
-model Person {
-  id       String @id @default(uuid())
+//////////////////////
+// DEVICES (RFID / BUS)
+//////////////////////
+
+model Device {
+  id        String @id @default(uuid())
+  deviceId  String @unique
+  secretKey String
+  type      String // SCHOOL_RFID / BUS_RFID
+
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id])
 
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id])
-
-  type  String // STUDENT | TEACHER | STAFF | SECURITY | DRIVER | HELPER
-  refId String? // Student.id, DriverProfile.id, etc.
-
-  rfidTag String @unique
+  location String?
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
-
-  attendance Attendance[]
-  events     MovementEvent[]
-  Student    Student[]
 }

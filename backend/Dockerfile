@@ -1,12 +1,25 @@
-FROM node:20-alpine
+FROM node:20-slim
 
+# Install OpenSSL (required by Prisma)
+RUN apt-get update -y && apt-get install -y openssl
+
+# App directory
 WORKDIR /app
 
-COPY package*.json ./
+# Copy backend package files
+COPY backend/package*.json ./
+
+# Install dependencies
 RUN npm install
 
-COPY . .
+# Copy backend source
+COPY backend/ ./
+
+# Generate Prisma client INSIDE container
+RUN npx prisma generate
+
+# Build NestJS
 RUN npm run build
 
 EXPOSE 3000
-CMD ["node", "dist/main.js"]
+CMD ["npm", "run", "start:prod"]

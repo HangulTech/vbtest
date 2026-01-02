@@ -3,8 +3,8 @@ import {
   ExecutionContext,
   Injectable,
   UnauthorizedException
-} from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+} from 'src/admin/node_modules/@nestjs/common';
+import { PrismaClient } from 'src/admin/node_modules/@prisma/client';
 
 @Injectable()
 export class DeviceGuard implements CanActivate {
