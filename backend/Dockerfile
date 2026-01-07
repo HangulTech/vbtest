@@ -1,21 +1,12 @@
-FROM node:20-slim
-
-RUN apt-get update -y && apt-get install -y openssl
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dependencies
-COPY backend/package*.json ./
+COPY package*.json ./
 RUN npm install
 
-# Copy source
-COPY backend/ ./
-
-# Generate Prisma client
-RUN npx prisma generate
-
-# Build NestJS (this will create dist/)
-RUN npx nest build
+COPY . .
+RUN npm run build
 
 EXPOSE 3000
 
