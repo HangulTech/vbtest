@@ -1,0 +1,51 @@
+Just lock this decision with a note:
+
+📌 Design decision (locked):
+EduHan will use a single app for Students and Parents with profile switching.
+Parent profile access will require secondary authentication (PIN/biometric).
+No schema changes required at this stage.
+
+and we should allow single login device  not multiple devices login as then single studen tprofile can be used in multile devices and other users can use it effecting revenue
+
+✅ Final Decision: Device Registration + Admin-Controlled Change (LOCK 🔒)
+🔐 Core Rule (Final)
+
+A user account can be used only on registered devices.
+Changing device requires school admin approval.
+One web login is allowed in parallel.
+
+This gives you:
+
+Strong revenue protection
+
+School-level control
+
+Zero misuse
+
+Audit trail (very important for schools)
+
+🧠 How this works conceptually
+Device types we allow
+Device Type	Allowed	Notes
+📱 Mobile App (Primary)	✅ 1 only	Student / Parent
+💻 Web App	✅ 1 session	Admin / Parent
+🖥️ School Kiosk	✅ Special	RFID-only
+❌ Second Mobile	❌	Needs approval
+
+=================================================
+📌 Final Locked Policy (Write this down)
+
+EduHan Device Policy (Locked):
+
+Mobile app access is restricted to registered devices only
+
+One primary mobile device per user
+
+Device change requires school admin approval
+
+One concurrent web login is allowed
+
+Profile switching (Student / Parent) is allowed on the same device
+
+No more debate needed. This is the right call.
+==========================================================================================================

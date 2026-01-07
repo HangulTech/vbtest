@@ -1,17 +1,27 @@
-import { Controller, Post, Body } from 'src/admin/node_modules/@nestjs/common';
+import { Body, Controller, Get, Post } from '@nestjs/common';
 import { StudentsService } from './students.service';
 
-@Controller('students')
+@Controller('api/admin/student')
 export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
   @Post()
-  async create(
-    @Body() body: { tenantId: string; fullName: string }
-  ) {
-    return this.studentsService.createStudent(
-      body.tenantId,
-      body.fullName
-    );
+  async createStudent(@Body() body: {
+    fullName: string;
+    rmfId: string;
+    tenantId: string;
+    personId: string;
+  }) {
+    return this.studentsService.createStudent({
+      fullName: body.fullName,
+      rmfId: body.rmfId,
+      tenantId: body.tenantId,
+      personId: body.personId
+    });
+  }
+
+  @Get()
+  async getStudents() {
+    return this.studentsService.getStudents();
   }
 }

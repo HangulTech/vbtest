@@ -1,54 +1,45 @@
 🧪 CLEAN, CORRECT TEST FLOW (DO THIS EXACTLY)
 1️⃣ Create Tenant
-POST http://localhost:3000/api/admin/tenant
-
+POST /api/admin/tenant
 {
   "name": "EduHan Demo School"
 }
 
+save tenant id
 
-➡️ Copy returned tenantId
-
-2️⃣ Create Person (STUDENT)
-POST http://localhost:3000/api/admin/person
-
+2️⃣ Create Person
+POST /api/admin/person
 {
-  "tenantId": "24ed414a-3c70-4145-b516-32e4915e359b",
+  "tenantId": "<tenantId>",
   "type": "STUDENT",
-  "rfidTag": "RFID-STU-010"
+  "rfidTag": "RFID-STU-001"
 }
 
 
-➡️ Copy returned personId
+Save:personId
 
-3️⃣ Create Student (THIS WILL NOW WORK)
-POST http://localhost:3000/api/admin/student
-
+3️⃣ Create Student
+POST /api/admin/student
 {
-  "tenantId": "24ed414a-3c70-4145-b516-32e4915e359b",
-  "fullName": "Ayaan Khan",
-  "rmfId": "EDU25ABC010",
-  "personId": "e47431e4-9ca3-4044-bd0a-927f810e32d0"
+  "tenantId": "<tenantId>",
+  "personId": "<personId>",
+  "rmfId": "EDU25ABC0001",
+  "fullName": "Ovis Bhat"
 }
 
-
-✅ This must succeed now.
-
-4️⃣ Attendance event (final proof)
-POST http://localhost:3000/api/attendance/event
-
+4️⃣ Post Attendance Event (this triggers notifications)
+POST /api/attendance/event
 {
-  "personId": "e47431e4-9ca3-4044-bd0a-927f810e32d0",
+  "personId": "<personId>",
   "eventType": "ENTER_SCHOOL",
-  "source": "EDU25ABC010",
+  "source": "RFID",
   "location": "Main Gate"
 }
+5️⃣ Verify Attendance
+GET /api/admin/attendance?date=2026-01-05
+
+6️⃣ Verify Notifications (next step)
+GET /api/notifications
 
 
-Expected:
-
-200 OK
-
-MovementEvent created
-
-Attendance auto-created (PRESENT)
+(We’ll wire this endpoint next.)

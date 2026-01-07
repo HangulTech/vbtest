@@ -19,3 +19,8 @@ services:
       POSTGRES_PASSWORD: eduhan
     ports:
       - "5432:5432"
+    volumes:
+      - eduhan_db:/var/lib/postgresql/data
+
+volumes:
+  eduhan_db:

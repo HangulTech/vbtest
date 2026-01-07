@@ -1,30 +1,33 @@
-import { Controller, Post, Body } from 'src/admin/node_modules/@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
+import { AttendanceStatus } from '@prisma/client';
 
 @Controller('attendance')
 export class AttendanceController {
   constructor(private readonly service: AttendanceService) {}
 
+  // -------------------------
+  // RECORD EVENT
+  // -------------------------
   @Post('event')
-  record(@Body() body: {
+  recordEvent(@Body() body: {
     personId: string;
     eventType: string;
     source: string;
+    timestamp?: Date;
     location?: string;
   }) {
-    return this.service.recordEvent({
-      personId: body.personId,
-      eventType: body.eventType,
-      source: body.source,
-      location: body.location
-    });
+    return this.service.recordEvent(body);
   }
 
+  // -------------------------
+  // MANUAL OVERRIDE
+  // -------------------------
   @Post('manual')
-  manual(@Body() body: {
+  manualOverride(@Body() body: {
     personId: string;
     date: string;
-    status: 'PRESENT' | 'ABSENT';
+    status: AttendanceStatus;
   }) {
     return this.service.manualOverride(
       body.personId,

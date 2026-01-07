@@ -5,9 +5,9 @@ import { PrismaClient, PersonType } from '@prisma/client';
 export class AdminService {
   private prisma = new PrismaClient();
 
-  // ------------------
+  // ==================
   // TENANT
-  // ------------------
+  // ==================
   createTenant(name: string) {
     return this.prisma.tenant.create({
       data: {
@@ -23,9 +23,9 @@ export class AdminService {
     });
   }
 
-  // ------------------
+  // ==================
   // PERSON
-  // ------------------
+  // ==================
   createPerson(data: {
     tenantId: string;
     type: PersonType;
@@ -49,9 +49,9 @@ export class AdminService {
     });
   }
 
-  // ------------------
+  // ==================
   // STUDENT
-  // ------------------
+  // ==================
   createStudent(data: {
     tenantId: string;
     fullName: string;
@@ -78,39 +78,43 @@ export class AdminService {
     });
   }
 
-  // ------------------
-  // ATTENDANCE
-  // ------------------
+  // ==================
+  // ATTENDANCE (CORRECT)
+  // ==================
   getAttendanceByDate(date: Date) {
-    const start = new Date(date);
-    start.setHours(0, 0, 0, 0);
+    const day = new Date(date);
+    day.setHours(0, 0, 0, 0);
 
-    const end = new Date(date);
-    end.setHours(23, 59, 59, 999);
-
-    return this.prisma.movementEvent.findMany({
+    return this.prisma.attendance.findMany({
       where: {
-        timestamp: {
-          gte: start,
-          lte: end
-        }
+        date: day
       },
       include: {
-        person: true
+        person: {
+          include: {
+            student: true
+          }
+        }
       },
       orderBy: {
-        timestamp: 'desc'
+        person: {
+          createdAt: 'asc'
+        }
       }
     });
   }
 
   getAllAttendance() {
-    return this.prisma.movementEvent.findMany({
+    return this.prisma.attendance.findMany({
       include: {
-        person: true
+        person: {
+          include: {
+            student: true
+          }
+        }
       },
       orderBy: {
-        timestamp: 'desc'
+        date: 'desc'
       }
     });
   }

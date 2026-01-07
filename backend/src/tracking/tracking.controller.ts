@@ -1,4 +1,4 @@
-import { Controller, Post, Param, Get } from 'src/admin/node_modules/@nestjs/common';
+import { Controller, Post, Param, Get } from '@nestjs/common';
 import { TrackingService } from './tracking.service';
 
 @Controller('tracking')

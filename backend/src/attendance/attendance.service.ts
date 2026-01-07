@@ -1,11 +1,10 @@
-import { Injectable } from 'src/admin/node_modules/@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   PrismaClient,
-  PersonType,
-  AttendanceStatus
-} from 'src/admin/node_modules/@prisma/client';
+  AttendanceStatus,
+  PersonType
+} from '@prisma/client';
 import { EVENT_TYPE } from './attendance.events';
-import { MORNING_CUTOFF_HOUR } from './attendance.rules';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NOTIFICATION_TYPE } from '../notifications/notification.types';
 
@@ -27,7 +26,7 @@ export class AttendanceService {
   }
 
   // =========================
-  // RECORD EVENT (CORE)
+  // RECORD EVENT
   // =========================
   async recordEvent(input: {
     personId: string;
@@ -39,7 +38,7 @@ export class AttendanceService {
     const ts = input.timestamp ?? new Date();
     const day = this.normalizeDate(ts);
 
-    // 1️⃣ Store movement event
+    // 1️⃣ Store movement
     const event = await this.prisma.movementEvent.create({
       data: {
         personId: input.personId,
@@ -50,7 +49,7 @@ export class AttendanceService {
       }
     });
 
-    // 2️⃣ Attendance derivation
+    // 2️⃣ Attendance + Notifications
     if (
       input.eventType === EVENT_TYPE.ENTER_SCHOOL ||
       input.eventType === EVENT_TYPE.BOARD_BUS
@@ -74,7 +73,6 @@ export class AttendanceService {
         }
       });
 
-      // 🔔 Notifications (students only)
       const person = await this.prisma.person.findUnique({
         where: { id: input.personId },
         include: { student: true }
@@ -83,63 +81,32 @@ export class AttendanceService {
       if (person?.type === PersonType.STUDENT && person.student) {
         await this.notifications.notifyParents(
           person.student.id,
-          NOTIFICATION_TYPE.STUDENT_ARRIVED,
+          input.eventType === EVENT_TYPE.ENTER_SCHOOL
+            ? NOTIFICATION_TYPE.STUDENT_ARRIVED
+            : NOTIFICATION_TYPE.BUS_BOARDED,
           {
-            studentName: person.student.fullName,
-            time: ts.toLocaleTimeString()
+            time: ts.toISOString(),
+            location: input.location
           }
         );
       }
     }
 
-    return event;
-  }
-
-  // =========================
-  // AUTO ABSENT MARKING
-  // =========================
-  async markAbsentIfNoEvents(date: Date) {
-    const cutoff = new Date(date);
-    cutoff.setHours(MORNING_CUTOFF_HOUR, 0, 0, 0);
-
-    if (new Date() < cutoff) return;
-
-    const day = this.normalizeDate(date);
-
-    // 🔥 Loop over PERSONS (students + staff)
-    const persons = await this.prisma.person.findMany({
-      where: { isActive: true }
-    });
-
-    for (const p of persons) {
-      const hasEvent = await this.prisma.movementEvent.findFirst({
-        where: {
-          personId: p.id,
-          timestamp: { gte: day }
-        }
+    if (input.eventType === EVENT_TYPE.EXIT_SCHOOL) {
+      const student = await this.prisma.student.findFirst({
+        where: { personId: input.personId }
       });
 
-      if (!hasEvent) {
-        await this.prisma.attendance.upsert({
-          where: {
-            personId_date: {
-              personId: p.id,
-              date: day
-            }
-          },
-          update: {
-            status: AttendanceStatus.ABSENT,
-            source: 'EVENT'
-          },
-          create: {
-            personId: p.id,
-            date: day,
-            status: AttendanceStatus.ABSENT,
-            source: 'EVENT'
-          }
-        });
+      if (student) {
+        await this.notifications.notifyParents(
+          student.id,
+          NOTIFICATION_TYPE.STUDENT_LEFT,
+          { time: ts.toISOString() }
+        );
       }
     }
+
+    return event;
   }
 
   // =========================
@@ -169,15 +136,6 @@ export class AttendanceService {
         status,
         source: 'MANUAL'
       }
-    });
-  }
-
-  // =========================
-  // HELPER (USED BY NOTIFICATIONS / REPORTS)
-  // =========================
-  async resolveStudentForPerson(personId: string) {
-    return this.prisma.student.findUnique({
-      where: { personId }
     });
   }
 }

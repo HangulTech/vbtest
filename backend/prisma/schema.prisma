@@ -3,8 +3,6 @@ generator client {
   binaryTargets = ["native", "debian-openssl-1.1.x"]
 }
 
-
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -39,7 +37,7 @@ enum AttendanceStatus {
 }
 
 //////////////////////
-// CORE TENANT
+// TENANT
 //////////////////////
 
 model Tenant {
@@ -54,13 +52,13 @@ model Tenant {
 
   vehicles Vehicle[]
   routes   Route[]
+  devices  Device[]
 
   createdAt DateTime @default(now())
-  Device    Device[]
 }
 
 //////////////////////
-// AUTH / USERS
+// USERS / AUTH
 //////////////////////
 
 model User {
@@ -91,7 +89,7 @@ model SchoolProfile {
   tenantId String @unique
   tenant   Tenant @relation(fields: [tenantId], references: [id])
 
-  schoolCode String  @unique
+  schoolCode String @unique
   address    String?
   phone      String?
   email      String?
@@ -112,37 +110,38 @@ model Person {
   user   User?   @relation(fields: [userId], references: [id])
 
   type    PersonType
-  refId   String? // soft reference (DriverProfile, Helper, etc.)
-  rfidTag String     @unique
+  refId   String?
+  rfidTag String @unique
 
   student Student?
 
-  attendance Attendance[]
-  events     MovementEvent[]
+  attendance    Attendance[]
+  events        MovementEvent[]
+  notifications Notification[]
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 }
 
 //////////////////////
-// STUDENTS
+// STUDENT
 //////////////////////
 
 model Student {
-  id         String  @id @default(uuid())
-  rmfId      String  @unique
+  id         String   @id @default(uuid())
+  rmfId      String
   fullName   String
   rollNumber String?
+  tenantId   String
+  personId   String   @unique
 
-  tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  person Person @relation(fields: [personId], references: [id])
 
-  personId String? @unique
-  person   Person? @relation(fields: [personId], references: [id])
-
-  parents      ParentStudent[]
-  routes       StudentRoute[]
-  boardingLogs BoardingLog[]
+  notifications Notification[]
+  parentLinks   ParentStudent[]
+  routes        StudentRoute[]
+  boardingLogs  BoardingLog[]
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -158,7 +157,7 @@ model Parent {
   user   User   @relation(fields: [userId], references: [id])
 
   students  ParentStudent[]
-  createdAt DateTime        @default(now())
+  createdAt DateTime @default(now())
 }
 
 model ParentStudent {
@@ -196,7 +195,7 @@ model Vehicle {
   tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   vehicleNo String
-  type      String // BUS / CAB
+  type      String
   capacity  Int?
 
   drivers DriverAssignment[]
@@ -228,7 +227,7 @@ model Route {
   vehicle   Vehicle @relation(fields: [vehicleId], references: [id])
 
   name      String
-  direction String // MORNING / EVENING
+  direction String
 
   stops RouteStop[]
   trips Trip[]
@@ -268,7 +267,7 @@ model StudentRoute {
 model Trip {
   id      String @id @default(uuid())
   routeId String
-  route   Route  @relation(fields: [routeId], references: [id])
+  route   Route @relation(fields: [routeId], references: [id])
 
   driverId String
   driver   DriverProfile @relation(fields: [driverId], references: [id])
@@ -291,7 +290,7 @@ model BoardingLog {
   trip    Trip    @relation(fields: [tripId], references: [id])
   student Student @relation(fields: [studentId], references: [id])
 
-  eventType String // BOARD / DROP
+  eventType String
   latitude  Float?
   longitude Float?
   timestamp DateTime @default(now())
@@ -300,7 +299,7 @@ model BoardingLog {
 }
 
 //////////////////////
-// ATTENDANCE & EVENTS
+// ATTENDANCE
 //////////////////////
 
 model Attendance {
@@ -308,7 +307,7 @@ model Attendance {
   personId String
   date     DateTime
   status   AttendanceStatus
-  source   String // EVENT / MANUAL
+  source   String
 
   person Person @relation(fields: [personId], references: [id])
 
@@ -320,8 +319,8 @@ model Attendance {
 model MovementEvent {
   id        String   @id @default(uuid())
   personId  String
-  eventType String // ENTER_SCHOOL, EXIT_SCHOOL, BOARD_BUS, DROP_BUS
-  source    String // SCHOOL_RFID, BUS_RFID
+  eventType String
+  source    String
   location  String?
   timestamp DateTime @default(now())
 
@@ -331,20 +330,41 @@ model MovementEvent {
 }
 
 //////////////////////
-// DEVICES (RFID / BUS)
+// DEVICES
 //////////////////////
 
 model Device {
   id        String @id @default(uuid())
   deviceId  String @unique
   secretKey String
-  type      String // SCHOOL_RFID / BUS_RFID
+  type      String
 
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   location String?
+  isActive Boolean @default(true)
 
-  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+}
+
+//////////////////////
+// NOTIFICATIONS
+//////////////////////
+
+model Notification {
+  id        String   @id @default(uuid())
+  type      String
+  title     String
+  message   String
+
+  studentId String?
+  personId  String?
+
+  metadata  Json?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  student   Student? @relation(fields: [studentId], references: [id])
+  person    Person?  @relation(fields: [personId], references: [id])
 }

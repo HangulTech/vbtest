@@ -1,45 +1,85 @@
-import { Injectable, Logger } from 'src/admin/node_modules/@nestjs/common';
-import { PrismaClient } from 'src/admin/node_modules/@prisma/client';
-import { NOTIFICATION_TYPE } from './notification.types';
-import { NotificationTemplates } from './notification.templates';
+import { Injectable } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
+import { NotificationType } from './notification.types';
 
 @Injectable()
 export class NotificationsService {
   private prisma = new PrismaClient();
-  private logger = new Logger('Notifications');
 
+  // =========================
+  // CORE NOTIFICATION CREATION
+  // =========================
+  async createNotification(input: {
+    studentId?: string;
+    personId?: string;
+    type: NotificationType;
+    title: string;
+    message: string;
+    metadata?: Record<string, any>;
+  }) {
+    return this.prisma.notification.create({
+      data: {
+        studentId: input.studentId ?? null,
+        personId: input.personId ?? null,
+        type: input.type,
+        title: input.title,
+        message: input.message,
+        metadata: input.metadata ?? {}
+      }
+    });
+  }
+
+  // =========================
+  // STUDENT → PARENT NOTIFY
+  // =========================
   async notifyParents(
     studentId: string,
-    type: keyof typeof NOTIFICATION_TYPE,
-    payload: {
-      studentName: string;
-      time?: string;
-      eta?: string;
-    }
+    type: NotificationType,
+    metadata?: Record<string, any>
   ) {
-    // 1. Resolve parents
-    const parents = await this.prisma.parentStudent.findMany({
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId }
+    });
+
+    if (!student) return;
+
+    return this.createNotification({
+      studentId,
+      type,
+      title: 'Student Update',
+      message: this.buildMessage(type, metadata),
+      metadata
+    });
+  }
+
+  // =========================
+  // FETCH
+  // =========================
+  async getNotificationsForStudent(studentId: string) {
+    return this.prisma.notification.findMany({
       where: { studentId },
-      include: { parent: { include: { user: true } } }
+      orderBy: { createdAt: 'desc' }
     });
+  }
 
-    if (!parents.length) return;
-
-    // 2. Build message
-    const message = NotificationTemplates[type](
-      payload.studentName,
-      payload.time ?? payload.eta ?? ''
-    );
-
-    // 3. Queue notification (for now, log)
-    parents.forEach(p => {
-      this.logger.log(
-        `[Notify ${p.parent.user?.phone ?? 'unknown'}]: ${message}`
-      );
-    });
-
-    // Later:
-    // - Push to queue
-    // - Send SMS / WhatsApp / Push
+  // =========================
+  // MESSAGE BUILDER
+  // =========================
+  private buildMessage(
+    type: NotificationType,
+    metadata?: Record<string, any>
+  ): string {
+    switch (type) {
+      case 'STUDENT_ARRIVED':
+        return `Student arrived at school at ${metadata?.time ?? ''}`;
+      case 'STUDENT_LEFT':
+        return `Student left school at ${metadata?.time ?? ''}`;
+      case 'BUS_BOARDED':
+        return `Student boarded the bus`;
+      case 'BUS_DROPPED':
+        return `Student dropped from bus`;
+      default:
+        return 'Student update';
+    }
   }
 }

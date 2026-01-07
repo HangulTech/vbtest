@@ -1,16 +1,21 @@
-export const NotificationTemplates = {
-  STUDENT_ARRIVED: (name: string, time: string) =>
-    `✅ ${name} has arrived at school at ${time}.`,
+import { NotificationType } from './notification.types';
 
-  STUDENT_LEFT: (name: string, time: string) =>
-    `🚪 ${name} has left the school premises at ${time}.`,
+export const NotificationTemplates: Record<
+  NotificationType,
+  (...args: any[]) => string
+> = {
+  STUDENT_ARRIVED: (studentName: string, time: string) =>
+    `✅ ${studentName} arrived at school at ${time}.`,
 
-  BUS_BOARDED: (name: string, time: string) =>
-    `🚌 ${name} boarded the school bus at ${time}.`,
+  STUDENT_LEFT: (studentName: string, time: string) =>
+    `🚪 ${studentName} left school at ${time}.`,
 
-  BUS_DROPPED: (name: string, time: string) =>
-    `📍 ${name} was dropped safely at ${time}.`,
+  BUS_BOARDED: (studentName: string, busNo?: string) =>
+    `🚌 ${studentName} boarded the bus${busNo ? ` (${busNo})` : ''}.`,
 
-  ETA_UPDATE: (name: string, eta: string) =>
-    `⏱ ${name}'s bus is expected to arrive at ${eta}.`
+  BUS_DROPPED: (studentName: string, time?: string) =>
+    `🏠 ${studentName} was dropped${time ? ` at ${time}` : ''}.`,
+
+  ETA_UPDATE: (studentName: string, eta: string) =>
+    `⏱️ Bus ETA update for ${studentName}: ${eta}.`
 };

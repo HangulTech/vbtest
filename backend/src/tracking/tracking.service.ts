@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from 'src/admin/node_modules/@nestjs/common';
-import { PrismaClient } from 'src/admin/node_modules/@prisma/client';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
 import { EtaEngine } from './eta.engine';
 
 @Injectable()

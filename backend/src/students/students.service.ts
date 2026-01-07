@@ -1,37 +1,41 @@
-import { Injectable } from 'src/admin/node_modules/@nestjs/common';
-import { PrismaClient } from 'src/admin/node_modules/@prisma/client';
-import { generateRMF } from './rmf.util';
+import { Injectable } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
 
 @Injectable()
 export class StudentsService {
   private prisma = new PrismaClient();
 
-  async createStudent(tenantId: string, fullName: string) {
-    const school = await this.prisma.schoolProfile.findUnique({
-      where: { tenantId }
-    });
-
-    if (!school) {
-      throw new Error('School profile not found');
-    }
-
-    let rmfId: string;
-    let exists = true;
-
-    // Collision-safe generation
-    while (exists) {
-      rmfId = generateRMF(school.schoolCode);
-      const count = await this.prisma.student.count({
-        where: { rmfId }
-      });
-      exists = count > 0;
-    }
-
+  async createStudent(data: {
+    fullName: string;
+    rmfId: string;
+    tenantId: string;
+    personId: string;
+  }) {
     return this.prisma.student.create({
       data: {
-        fullName,
-        tenantId,
-        rmfId
+        fullName: data.fullName,
+        rmfId: data.rmfId,
+
+        tenant: {
+          connect: { id: data.tenantId }
+        },
+
+        person: {
+          connect: { id: data.personId }
+        },
+
+        isActive: true
+      }
+    });
+  }
+
+  async getStudents() {
+    return this.prisma.student.findMany({
+      include: {
+        person: true
+      },
+      orderBy: {
+        createdAt: 'desc'
       }
     });
   }

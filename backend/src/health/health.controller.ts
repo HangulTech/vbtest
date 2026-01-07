@@ -1,4 +1,4 @@
-import { Controller, Get } from 'src/admin/node_modules/@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 
 @Controller('health')
 export class HealthController {

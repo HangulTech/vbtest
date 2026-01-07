@@ -1,8 +1,7 @@
-import 'src/admin/node_modules/reflect-metadata';
+import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from 'src/admin/node_modules/@nestjs/common';
-
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -17,14 +16,8 @@ async function bootstrap() {
     })
   );
 
-  app.enableCors({
-    origin: '*',
-    credentials: true
-  });
-
-  const port = process.env.PORT || 3000;
-  await app.listen(port);
-
-  console.log(`EduHan backend running on port ${port}`);
+  await app.listen(3000);
+  console.log('EduHan backend running on port 3000');
 }
+
 bootstrap();
