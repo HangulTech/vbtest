@@ -1,42 +1,25 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class StudentsService {
-  private prisma = new PrismaClient();
+  constructor(private readonly prisma: PrismaService) {}
 
-  async createStudent(data: {
-    fullName: string;
-    rmfId: string;
-    tenantId: string;
-    personId: string;
-  }) {
-    return this.prisma.student.create({
-      data: {
-        fullName: data.fullName,
-        rmfId: data.rmfId,
-
-        tenant: {
-          connect: { id: data.tenantId }
-        },
-
-        person: {
-          connect: { id: data.personId }
-        },
-
-        isActive: true
-      }
-    });
-  }
-
-  async getStudents() {
+  findAll() {
     return this.prisma.student.findMany({
       include: {
-        person: true
+        person: true,
+        enrollments: {
+          include: {
+            section: {
+              include: {
+                class: true,
+              },
+            },
+            academicYear: true,
+          },
+        },
       },
-      orderBy: {
-        createdAt: 'desc'
-      }
     });
   }
 }
