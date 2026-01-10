@@ -11,7 +11,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "src/**/*.d.ts"]
   "exclude": [
     "node_modules",
     "dist",
@@ -21,7 +21,6 @@
     "src/students/**",
     "src/users/**",
     "src/devices/**",
-    "src/health/**",
     "src/prisma/seed.ts"
   ]
 }

@@ -1,82 +1,161 @@
+//////////////////////////////////////////////////////
+// GENERATOR & DATASOURCE
+//////////////////////////////////////////////////////
+
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
-
-
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model Tenant {
-  id        String   @id @default(uuid())
-  name      String
-  createdAt DateTime @default(now())
+//////////////////////////////////////////////////////
+// ENUMS
+//////////////////////////////////////////////////////
 
-  persons          Person[]
-  academicYears    AcademicYear[]
-  classes          Class[]
-  attendanceEvents AttendanceEvent[]
-  notifications    Notification[]
+enum RoleType {
+  PLATFORM_ADMIN
+  SCHOOL_ADMIN
+  TEACHER
+  STUDENT
+  PARENT
+  PUBLIC_INSTRUCTOR
 }
 
-model Notification {
-  id        String   @id @default(uuid())
-  title     String
-  message   String
-  type      String // SYSTEM for now
-  createdAt DateTime @default(now())
-  Tenant    Tenant?  @relation(fields: [tenantId], references: [id])
-  tenantId  String?
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
 }
+
+enum AttendanceSource {
+  MANUAL
+  RFID
+  BIOMETRIC
+  ONLINE
+}
+
+enum AttendanceType {
+  IN
+  OUT
+}
+
+//////////////////////////////////////////////////////
+// CORE IDENTITY & ACCESS
+//////////////////////////////////////////////////////
 
 model Person {
-  id        String    @id @default(uuid())
-  tenantId  String
+  id        String @id @default(uuid())
   firstName String
   lastName  String
   dob       DateTime?
   gender    String?
-  phone     String?
-  email     String?
-  createdAt DateTime  @default(now())
+  phone     String? @unique
+  email     String? @unique
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  status    AccountStatus @default(ACTIVE)
 
-  student Student?
-  teacher Teacher?
-  parent  Parent?
+  memberships Membership[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-model Student {
+model Tenant {
+  id        String @id @default(uuid())
+  name      String
+  code      String @unique
+  isActive  Boolean @default(true)
+
+  memberships      Membership[]
+  academicYears    AcademicYear[]
+  classes           Class[]
+  attendanceEvents AttendanceEvent[]
+  notifications     Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Role {
+  id   String   @id @default(uuid())
+  type RoleType @unique
+
+  memberships Membership[]
+}
+
+model Membership {
+  id        String @id @default(uuid())
+  personId  String
+  tenantId  String
+  roleId    String
+
+  person Person @relation(fields: [personId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  isPrimary Boolean @default(false)
+
+  studentProfile StudentProfile?
+  teacherProfile TeacherProfile?
+  parentProfile  ParentProfile?
+
+  createdAt DateTime @default(now())
+
+  @@unique([personId, tenantId, roleId])
+}
+
+//////////////////////////////////////////////////////
+// ROLE PROFILES
+//////////////////////////////////////////////////////
+
+model StudentProfile {
   id              String @id @default(uuid())
-  personId        String @unique
+  membershipId    String @unique
   admissionNumber String
   status          String
 
-  person Person @relation(fields: [personId], references: [id])
-
+  membership Membership @relation(fields: [membershipId], references: [id])
+ 
   enrollments Enrollment[]
   attendance  AttendanceEvent[]
+  parents ParentStudent[]
 }
 
-model Teacher {
+model TeacherProfile {
   id           String @id @default(uuid())
-  personId     String @unique
+  membershipId String @unique
   employeeCode String
   status       String
 
-  person Person @relation(fields: [personId], references: [id])
+  membership Membership @relation(fields: [membershipId], references: [id])
 }
 
-model Parent {
-  id       String @id @default(uuid())
-  personId String @unique
+model ParentProfile {
+  id           String @id @default(uuid())
+  membershipId String @unique
 
-  person Person @relation(fields: [personId], references: [id])
+  membership Membership @relation(fields: [membershipId], references: [id])
+  children ParentStudent[]
 }
+
+model ParentStudent {
+  id        String @id @default(uuid())
+  parentId  String
+  studentId String
+
+  parent  ParentProfile  @relation(fields: [parentId], references: [id])
+  student StudentProfile @relation(fields: [studentId], references: [id])
+
+  @@unique([parentId, studentId])
+}
+
+//////////////////////////////////////////////////////
+// ACADEMIC DOMAIN
+//////////////////////////////////////////////////////
 
 model AcademicYear {
   id       String  @id @default(uuid())
@@ -93,7 +172,7 @@ model AcademicYear {
 model Class {
   id       String @id @default(uuid())
   tenantId String
-  name     String // Grade 1, Grade 5, Class 10
+  name     String
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
@@ -103,7 +182,7 @@ model Class {
 model Section {
   id      String @id @default(uuid())
   classId String
-  name    String // A, B, C
+  name    String
 
   class Class @relation(fields: [classId], references: [id])
 
@@ -118,26 +197,46 @@ model Enrollment {
   academicYearId String
   enrolledAt     DateTime @default(now())
 
-  student      Student      @relation(fields: [studentId], references: [id])
-  section      Section      @relation(fields: [sectionId], references: [id])
-  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  student      StudentProfile @relation(fields: [studentId], references: [id])
+  section      Section        @relation(fields: [sectionId], references: [id])
+  academicYear AcademicYear   @relation(fields: [academicYearId], references: [id])
 
   @@unique([studentId, sectionId, academicYearId])
 }
 
+//////////////////////////////////////////////////////
+// ATTENDANCE
+//////////////////////////////////////////////////////
+
 model AttendanceEvent {
-  id             String   @id @default(uuid())
+  id             String @id @default(uuid())
   tenantId       String
   studentId      String
   sectionId      String
   academicYearId String
-  eventType      String // IN | OUT
-  source         String // MANUAL | RFID | BIOMETRIC | ONLINE
+  eventType      AttendanceType
+  source         AttendanceSource
   timestamp      DateTime @default(now())
   recordedBy     String?
 
-  tenant       Tenant       @relation(fields: [tenantId], references: [id])
-  student      Student      @relation(fields: [studentId], references: [id])
-  section      Section      @relation(fields: [sectionId], references: [id])
-  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  tenant       Tenant         @relation(fields: [tenantId], references: [id])
+  student      StudentProfile @relation(fields: [studentId], references: [id])
+  section      Section        @relation(fields: [sectionId], references: [id])
+  academicYear AcademicYear   @relation(fields: [academicYearId], references: [id])
+}
+
+//////////////////////////////////////////////////////
+// NOTIFICATIONS
+//////////////////////////////////////////////////////
+
+model Notification {
+  id        String @id @default(uuid())
+  title     String
+  message   String
+  type      String
+  tenantId  String?
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
 }

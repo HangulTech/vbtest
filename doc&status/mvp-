@@ -1,0 +1,395 @@
+🏗️ EduHan – End-to-End Architecture & Core Features
+Think of EduHan as 3 products in one platform, sharing a single identity & data backbone.
+
+1️⃣ WHAT ARE WE BUILDING? (High-level vision)
+EduHan is a multi-tenant education platform that supports:
+
+
+Schools (their own private environment)
+
+
+Public instructors (marketplace model)
+
+
+Students & parents (unified learning + tracking)
+
+
+All of this runs on one backend, with membership-based access (which you already built).
+
+2️⃣ CORE ARCHITECTURAL PRINCIPLES (VERY IMPORTANT)
+These principles drive every technical decision:
+🔑 1. Identity is global, access is contextual
+
+
+A Person exists once
+
+
+A Membership defines:
+
+
+which tenant
+
+
+which role
+
+
+
+
+One user → many roles → many tenants
+
+
+✅ You already implemented this correctly.
+
+🧱 2. Hard separation between:
+
+
+Identity & Access (Auth)
+
+
+Academic domain
+
+
+Learning content
+
+
+Operations (attendance, transport, fees)
+
+
+This avoids future rewrites.
+
+🧩 3. Everything is tenant-scoped
+
+
+No query should ever return data without tenant context
+
+
+JWT always contains tenantId + membershipId
+
+
+
+3️⃣ SYSTEM ARCHITECTURE (Logical Layers)
+🔹 A. Client Layer (multiple frontends)
+
+
+School Admin Web App
+
+
+Teacher Web App
+
+
+Student/Parent Web + Mobile
+
+
+Instructor Creator Dashboard
+
+
+(Later) Public Marketplace
+
+
+All clients talk to the same API, using role-based access.
+
+🔹 B. API Layer (NestJS – what we’re building)
+Split into modules, not microservices (for now).
+src/
+├── auth/              → login, JWT, guards
+├── admin/             → tenant & platform admin
+├── users/             → person-level ops
+├── memberships/       → role & tenant mapping
+├── students/
+├── parents/
+├── teachers/
+├── academics/         → classes, sections, years
+├── attendance/
+├── courses/
+├── assessments/
+├── notifications/
+├── payments/
+├── reports/
+└── common/             → guards, decorators, utils
+
+You are currently finishing auth + admin.
+
+🔹 C. Data Layer (Postgres + Prisma)
+Already very solid:
+
+
+Person
+
+
+Tenant
+
+
+Role
+
+
+Membership
+
+
+Role-specific profiles
+
+
+Academic structures
+
+
+Attendance events
+
+
+This schema is future-proof.
+
+4️⃣ CORE FEATURE SET (PHASED, REALISTIC)
+🟢 PHASE 1 – School Core (MVP)
+This is what schools will pay for first.
+🔐 Identity & Access
+
+
+Login (done)
+
+
+Role-based access (next)
+
+
+Tenant isolation (done)
+
+
+🏫 School Management
+
+
+Students
+
+
+Parents
+
+
+Teachers
+
+
+Class → Section → Academic Year
+
+
+Enrollment
+
+
+🕘 Attendance
+
+
+Manual attendance
+
+
+RFID / biometric events
+
+
+Parent visibility
+
+
+📢 Notifications
+
+
+Admin → parents
+
+
+Teacher → students
+
+
+System alerts
+
+
+
+🟡 PHASE 2 – Learning & Evaluation
+This is where EduHan becomes a learning platform, not just ERP.
+📚 Courses
+
+
+School-created courses
+
+
+Public instructor courses
+
+
+Course assignment to students
+
+
+📝 Assessments
+
+
+Tests
+
+
+Assignments
+
+
+Auto/manual grading
+
+
+Progress tracking
+
+
+📊 Reports
+
+
+Student progress
+
+
+Attendance reports
+
+
+Teacher performance
+
+
+
+🔵 PHASE 3 – Marketplace + Monetization
+This is where EduHan scales.
+🛒 Marketplace
+
+
+Public instructors publish courses
+
+
+Schools buy licenses
+
+
+Revenue sharing
+
+
+💳 Payments
+
+
+Subscriptions (schools)
+
+
+Course purchases
+
+
+Instructor payouts
+
+
+
+5️⃣ ROLE MODEL (CRITICAL FOR EVERYTHING)
+RoleScopeKey CapabilitiesPLATFORM_ADMINGlobalManage tenants, billingSCHOOL_ADMINTenantUsers, classes, reportsTEACHERTenantAttendance, coursesSTUDENTTenantLearning, testsPARENTTenantTracking, notificationsPUBLIC_INSTRUCTORGlobalCreate & sell courses
+You already encoded this correctly in Prisma.
+
+6️⃣ API SECURITY MODEL
+Every protected request will follow this flow:
+
+
+JWT validated
+
+
+Membership extracted
+
+
+Tenant context enforced
+
+
+Role guard applied
+
+
+Controller executes
+
+
+Example:
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(RoleType.SCHOOL_ADMIN)
+@Post('students')
+
+
+7️⃣ DEPLOYMENT ARCHITECTURE (SIMPLE, SCALABLE)
+Initial
+
+
+Docker Compose
+
+
+Single API
+
+
+Single DB
+
+
+Later (no rewrite)
+
+
+API → Horizontal scale
+
+
+DB → Read replicas
+
+
+Redis → caching & queues
+
+
+S3 → files/media
+
+
+
+8️⃣ WHAT WE SHOULD BUILD NEXT (STRATEGIC)
+Now that auth + tenant works, the correct next order is:
+🔹 Step C2a – Seed & Bootstrap
+
+
+Platform roles
+
+
+Demo admin
+
+
+Dev fixtures
+
+
+🔹 Step C2 – Student & Parent modules
+
+
+CRUD
+
+
+Parent–student linking
+
+
+Visibility rules
+
+
+🔹 Step C3 – RBAC Guards
+
+
+Enforce role permissions
+
+
+Lock APIs
+
+
+This keeps momentum without chaos.
+
+9️⃣ IMPORTANT QUESTION FOR YOU (ONE ANSWER ONLY)
+To guide architecture decisions, answer one thing when you’re ready:
+👉 Who is the primary paying customer initially?
+
+
+Schools?
+
+
+Individual instructors?
+
+
+Hybrid from day one?
+
+
+That answer affects:
+
+
+Feature priority
+
+
+UI flows
+
+
+Billing design
+
+
+
+When you’re refreshed, we’ll lock this architecture and then continue building without backtracking.
+Just say:
+
+“Let’s finalize the architecture”
+or
+“Proceed with Step C2a”
+
+You’re building this the right way.
